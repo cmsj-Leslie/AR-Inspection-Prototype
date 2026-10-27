@@ -147,11 +147,7 @@ namespace Inspection.AR
                 {
                     // 动态生成临时黄色定位指示物
                     currentPendingIndicator = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                    currentPendingIndicator.transform.localScale = new Vector3(0.15f, 0.005f, 0.15f);
-                    currentPendingIndicator.GetComponent<MeshRenderer>().material = new Material(Shader.Find("Standard"))
-                    {
-                        color = new Color(0.2f, 0.85f, 1f, 0.8f)
-                    };
+                    currentPendingIndicator.GetComponent<MeshRenderer>().material = MaterialHelper.CreateColoredMaterial(new Color(0.2f, 0.85f, 1f, 0.8f));
                     Destroy(currentPendingIndicator.GetComponent<Collider>());
                 }
             }

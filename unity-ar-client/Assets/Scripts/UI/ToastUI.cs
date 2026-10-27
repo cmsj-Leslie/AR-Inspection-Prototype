@@ -14,7 +14,15 @@ namespace Inspection.UI
 
     public class ToastUI : MonoBehaviour
     {
-        public static ToastUI Instance { get; private set; }
+        private static ToastUI instance;
+        public static ToastUI Instance
+        {
+            get
+            {
+                if (instance == null) instance = FindObjectOfType<ToastUI>(true);
+                return instance;
+            }
+        }
 
         [SerializeField] private CanvasGroup canvasGroup;
         [SerializeField] private Image backgroundImage;
@@ -29,12 +37,12 @@ namespace Inspection.UI
 
         private void Awake()
         {
-            if (Instance == null)
+            if (instance == null)
             {
-                Instance = this;
+                instance = this;
                 EnsureComponents();
             }
-            else
+            else if (instance != this)
             {
                 Destroy(gameObject);
             }

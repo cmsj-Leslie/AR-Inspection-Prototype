@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.holocode.arinspection"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- AR 摄像机权限与网络请求权限 -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- 声明必须支持 ARCore -->
+    <uses-feature android:name="android.hardware.camera.ar" android:required="true" />
+    <uses-feature android:name="android.hardware.camera" android:required="true" />
+
+    <!-- 允许局域网明文 HTTP 通信 (Samsung S23 Ultra Android 13/14 必须配置，否则拦截 http:// 局域网请求) -->
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/app_icon"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="28">
+        
+        <activity
+            android:name="com.unity3d.player.UnityPlayerActivity"
+            android:theme="@style/UnityThemeSelector"
+            android:screenOrientation="portrait"
+            android:launchMode="singleTask"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+            android:hardwareAccelerated="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- 声明 AR 启用 Activity -->
+            <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+            <meta-data android:name="unityplayer.ForwardNativeEventsToDalvik" android:value="true" />
+        </activity>
+
+        <!-- Google Play Services for AR (ARCore) 元数据 -->
+        <meta-data android:name="com.google.ar.core" android:value="required" />
+    </application>
+</manifest>

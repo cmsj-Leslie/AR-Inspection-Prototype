@@ -18,15 +18,18 @@ export function PositionMap({ issues, selectedId, onSelect }: Props) {
   const [hover, setHover] = useState<string | null>(null)
 
   const { points, range } = useMemo(() => {
-    const max = Math.max(1, ...issues.flatMap((i) => [Math.abs(i.position.x), Math.abs(i.position.z)]))
+    const max = Math.max(
+      1,
+      ...issues.flatMap((i) => [Math.abs(i.position?.x ?? 0), Math.abs(i.position?.z ?? 0)])
+    )
     const range = Math.ceil(max * 1.15 * 2) / 2 // 取 0.5 m 的整数倍
     const scale = (SIZE / 2 - PAD) / range
     return {
       range,
       points: issues.map((i) => ({
         issue: i,
-        cx: SIZE / 2 + i.position.x * scale,
-        cy: SIZE / 2 - i.position.z * scale, // z 轴向前，屏幕上方
+        cx: SIZE / 2 + (i.position?.x ?? 0) * scale,
+        cy: SIZE / 2 - (i.position?.z ?? 0) * scale, // z 轴向前，屏幕上方
       })),
     }
   }, [issues])

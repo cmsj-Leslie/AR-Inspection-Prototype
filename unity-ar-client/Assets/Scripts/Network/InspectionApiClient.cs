@@ -9,7 +9,24 @@ namespace Inspection.Network
 {
     public class InspectionApiClient : MonoBehaviour
     {
-        public static InspectionApiClient Instance { get; private set; }
+        private static InspectionApiClient instance;
+        public static InspectionApiClient Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+                    instance = FindObjectOfType<InspectionApiClient>();
+                    if (instance == null)
+                    {
+                        GameObject go = new GameObject("InspectionApiClient");
+                        instance = go.AddComponent<InspectionApiClient>();
+                        DontDestroyOnLoad(go);
+                    }
+                }
+                return instance;
+            }
+        }
 
         private const string PrefsKeyUrl = "Inspection_Backend_Url";
         public const string DefaultBaseUrl = "http://192.168.1.100:8080";
@@ -30,13 +47,13 @@ namespace Inspection.Network
 
         private void Awake()
         {
-            if (Instance == null)
+            if (instance == null)
             {
-                Instance = this;
+                instance = this;
                 DontDestroyOnLoad(gameObject);
                 currentBaseUrl = PlayerPrefs.GetString(PrefsKeyUrl, DefaultBaseUrl);
             }
-            else
+            else if (instance != this)
             {
                 Destroy(gameObject);
             }

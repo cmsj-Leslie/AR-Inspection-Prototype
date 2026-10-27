@@ -59,13 +59,16 @@ export function useIssues() {
     const es = new EventSource(api.eventsUrl())
     let wasOffline = false
 
-    es.addEventListener('ready', () => {
+    const onConnect = () => {
       setLive('live')
       if (wasOffline) {
         wasOffline = false
         void refresh() // 断线期间可能漏掉事件，重连后全量同步
       }
-    })
+    }
+
+    es.onopen = onConnect
+    es.addEventListener('ready', onConnect)
     es.addEventListener('change', (ev) => {
       const msg = JSON.parse((ev as MessageEvent).data) as ChangeEvent
       setLastSync(new Date())

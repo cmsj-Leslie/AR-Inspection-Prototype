@@ -100,12 +100,8 @@ namespace Inspection.AR
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.transform.SetParent(transform, false);
             sphere.transform.localPosition = new Vector3(0, 0.2f, 0);
-            sphere.transform.localScale = new Vector3(0.12f, 0.12f, 0.12f);
             bodyRenderer = sphere.GetComponent<MeshRenderer>();
-            bodyRenderer.material = new Material(Shader.Find("Standard"))
-            {
-                color = initialColor
-            };
+            bodyRenderer.material = MaterialHelper.CreateColoredMaterial(initialColor);
 
             // 3. 浮动文字
             GameObject textObj = new GameObject("TitleText");
