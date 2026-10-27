@@ -1,0 +1,36 @@
+# OS & Editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Go Backend
+backend/bin/
+backend/data/*.db
+backend/data/*.db-wal
+backend/data/*.db-shm
+
+# React Admin Web
+admin-web/node_modules/
+admin-web/dist/
+admin-web/.vite/
+admin-web/*.local
+
+# Unity AR Client
+unity-ar-client/[Ll]ibrary/
+unity-ar-client/[Tt]emp/
+unity-ar-client/[Oo]bj/
+unity-ar-client/[Bb]uild/
+unity-ar-client/[Bb]uilds/
+unity-ar-client/[Ll]ogs/
+unity-ar-client/[Uu]ser[Ss]ettings/
+unity-ar-client/[Mm]emory[Cc]aptures/
+unity-ar-client/*.csproj
+unity-ar-client/*.unityproj
+unity-ar-client/*.sln
+unity-ar-client/*.userprefs
+unity-ar-client/*.pidb
+unity-ar-client/*.booproj
+unity-ar-client/sysinfo.txt
