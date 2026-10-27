@@ -66,8 +66,10 @@ npm run dev
    - Texture Compression 保持默认或 ETC2；
    - 勾选或确认已安装 Android Build Support。
 3. 进入 **Project Settings -> XR Plug-in Management**，在 Android 标签页下勾选 **Google ARCore**。
-4. 手机开启「开发者选项」与「USB 调试」，用数据线连接电脑。
-5. 点击 **Build And Run**，将 APK 直接安装并启动于手机。
+4. **一键生成场景（推荐）**：在 Unity 顶部菜单栏点击 **「Tools -> 巡检系统 -> 一键自动创建并配置 AR 场景」**。
+   - 工具会自动建立 `Assets/Scenes/MainARScene.unity`，配置好 ARSession、水平平面检测、HUD 顶部栏、网络设置面板与表单，并自动完成所有脚本引用关联与 Build Settings 注册。
+5. 手机开启「开发者选项」与「USB 调试」，用数据线连接电脑。
+6. 点击 **Build And Run**，将 APK 直接安装并启动于手机。
 
 #### ⭐ Unity 真机如何配置 Go 后端地址：
 我们设计了**真机运行时动态网络配置与连通性测试面板**，无需每次变动 Wi-Fi 或 IP 时重新打包：
