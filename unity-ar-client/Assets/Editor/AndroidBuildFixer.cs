@@ -71,6 +71,34 @@ namespace Inspection.Editor
                 Debug.Log("<color=green>[巡检系统] Android 构建设置已自动配置完毕！可以直接点击 Build And Run 进行打包。</color>");
             }
         }
+
+        [MenuItem("Tools/巡检系统/一键打包并运行到手机 (Build And Run APK)", false, 3)]
+        public static void BuildAndRunApk()
+        {
+            FixSettings();
+            string buildDir = "Builds";
+            if (!System.IO.Directory.Exists(buildDir)) System.IO.Directory.CreateDirectory(buildDir);
+            string apkPath = System.IO.Path.Combine(buildDir, "ARInspection.apk");
+
+            var buildPlayerOptions = new BuildPlayerOptions
+            {
+                scenes = new[] { "Assets/Scenes/MainARScene.unity" },
+                locationPathName = apkPath,
+                target = BuildTarget.Android,
+                options = BuildOptions.AutoRunPlayer
+            };
+
+            Debug.Log("[巡检系统] 开始打包 ARInspection.apk 并推送到已连接手机...");
+            var report = BuildPipeline.BuildPlayer(buildPlayerOptions);
+            if (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            {
+                Debug.Log($"<color=green>[巡检系统] 打包并安装成功！耗时: {report.summary.totalTime.TotalSeconds:F1}s，安装包大小: {report.summary.totalSize / (1024 * 1024)}MB</color>");
+            }
+            else
+            {
+                Debug.LogError($"[巡检系统] 打包失败: {report.summary.result} (错误数: {report.summary.totalErrors})");
+            }
+        }
     }
 }
 #endif

@@ -36,14 +36,24 @@ namespace Inspection.Network
 
         public string BaseUrl
         {
-            get => currentBaseUrl;
+            get
+            {
+                if (string.IsNullOrEmpty(currentBaseUrl))
+                {
+                    currentBaseUrl = PlayerPrefs.GetString(PrefsKeyUrl, DefaultBaseUrl);
+                }
+                return currentBaseUrl;
+            }
             set
             {
                 currentBaseUrl = NormalizeUrl(value);
                 PlayerPrefs.SetString(PrefsKeyUrl, currentBaseUrl);
                 PlayerPrefs.Save();
+                Debug.Log($"[InspectionApiClient] 基础服务地址已更新并持久化: {currentBaseUrl}");
             }
         }
+
+        public event Action<bool, HealthResponse, string> OnConnectionStatusChanged;
 
         private void Awake()
         {
@@ -51,13 +61,8 @@ namespace Inspection.Network
             {
                 instance = this;
                 DontDestroyOnLoad(gameObject);
+                // 优先读取用户在【设置】面板保存的自定义 IP；只有初次打开从未设置过时，才使用 DefaultBaseUrl
                 currentBaseUrl = PlayerPrefs.GetString(PrefsKeyUrl, DefaultBaseUrl);
-                if (string.IsNullOrEmpty(currentBaseUrl) || currentBaseUrl.Contains("192.168.1.100"))
-                {
-                    currentBaseUrl = DefaultBaseUrl;
-                    PlayerPrefs.SetString(PrefsKeyUrl, currentBaseUrl);
-                    PlayerPrefs.Save();
-                }
             }
             else if (instance != this)
             {
@@ -65,15 +70,29 @@ namespace Inspection.Network
             }
         }
 
-        private static string NormalizeUrl(string url)
+        public static string NormalizeUrl(string url)
         {
             if (string.IsNullOrWhiteSpace(url)) return DefaultBaseUrl;
-            url = url.Trim();
-            if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+            
+            // 容错处理：过滤空格，将手机输入法偶尔输入的中文全角冒号 "：" 转为半角 ":"
+            url = url.Trim().Replace(" ", "").Replace("：", ":");
+            
+            if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && 
+                !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
                 url = "http://" + url;
             }
-            return url.TrimEnd('/');
+            url = url.TrimEnd('/');
+
+            // 智能补全端口：如果用户只输入了 IP（如 192.168.31.6），没有输入端口号，自动为其补全 :8080
+            int schemeIdx = url.IndexOf("://", StringComparison.Ordinal);
+            string hostAndPort = schemeIdx >= 0 ? url.Substring(schemeIdx + 3) : url;
+            if (!hostAndPort.Contains(":"))
+            {
+                url += ":8080";
+            }
+
+            return url;
         }
 
         /// <summary>
@@ -81,7 +100,11 @@ namespace Inspection.Network
         /// </summary>
         public void CheckHealth(Action<bool, HealthResponse, string> callback)
         {
-            StartCoroutine(GetCoroutine<HealthResponse>("/api/health", 5, callback));
+            StartCoroutine(GetCoroutine<HealthResponse>("/api/health", 3, (success, health, err) =>
+            {
+                OnConnectionStatusChanged?.Invoke(success, health, err);
+                callback?.Invoke(success, health, err);
+            }));
         }
 
         /// <summary>
@@ -176,6 +199,11 @@ namespace Inspection.Network
             else
             {
                 string errorMessage = ParseBackendError(responseText, req.error);
+                // 若出现网络传输或连接级错误，自动广播连接异常以更新首页状态胶囊
+                if (req.result == UnityWebRequest.Result.ConnectionError || req.responseCode == 0)
+                {
+                    OnConnectionStatusChanged?.Invoke(false, null, errorMessage);
+                }
                 callback?.Invoke(false, null, errorMessage);
             }
         }

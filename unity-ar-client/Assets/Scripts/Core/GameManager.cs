@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -30,16 +31,85 @@ namespace Inspection.Core
         [SerializeField] private TextMeshProUGUI statusPillText;
         [SerializeField] private Image statusPillDot;
 
+        private Coroutine heartbeatCoroutine;
+
         private void Awake()
         {
             if (Instance == null) Instance = this;
             else Destroy(gameObject);
         }
 
+        private void OnEnable()
+        {
+            SubscribeConnectionEvents();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeConnectionEvents();
+            if (heartbeatCoroutine != null)
+            {
+                StopCoroutine(heartbeatCoroutine);
+                heartbeatCoroutine = null;
+            }
+        }
+
         private void Start()
         {
+            SubscribeConnectionEvents();
             BindEvents();
             CheckBackendConnection();
+
+            if (heartbeatCoroutine != null) StopCoroutine(heartbeatCoroutine);
+            heartbeatCoroutine = StartCoroutine(HeartbeatCoroutine());
+        }
+
+        private void SubscribeConnectionEvents()
+        {
+            if (InspectionApiClient.Instance != null)
+            {
+                InspectionApiClient.Instance.OnConnectionStatusChanged -= HandleConnectionStatusChanged;
+                InspectionApiClient.Instance.OnConnectionStatusChanged += HandleConnectionStatusChanged;
+            }
+        }
+
+        private void UnsubscribeConnectionEvents()
+        {
+            if (InspectionApiClient.Instance != null)
+            {
+                InspectionApiClient.Instance.OnConnectionStatusChanged -= HandleConnectionStatusChanged;
+            }
+        }
+
+        private void HandleConnectionStatusChanged(bool success, HealthResponse health, string err)
+        {
+            UpdateStatusPill(success, success ? "后端正常" : "后端离线");
+        }
+
+        public void UpdateStatusPill(bool isOnline, string text)
+        {
+            if (statusPillText != null)
+            {
+                statusPillText.text = text;
+            }
+            if (statusPillDot != null)
+            {
+                statusPillDot.color = isOnline ? new Color(0.1f, 0.9f, 0.5f) : new Color(1f, 0.35f, 0.45f);
+            }
+        }
+
+        private IEnumerator HeartbeatCoroutine()
+        {
+            var wait = new WaitForSeconds(6.0f);
+            while (true)
+            {
+                yield return wait;
+                if (InspectionApiClient.Instance != null)
+                {
+                    // 周期性静默健康检查，其结果会自动通过 OnConnectionStatusChanged 刷新状态胶囊
+                    InspectionApiClient.Instance.CheckHealth(null);
+                }
+            }
         }
 
         private void BindEvents()
@@ -59,6 +129,20 @@ namespace Inspection.Core
             if (settingsButton != null) settingsButton.onClick.AddListener(() => settingsUI?.Open());
             if (historyButton != null) historyButton.onClick.AddListener(() => historyUI?.Open());
             if (refreshButton != null) refreshButton.onClick.AddListener(SyncAllIssuesFromBackend);
+
+            // 点击状态胶囊亦可直接呼出设置面板，便于用户随时排查连接
+            if (statusPillDot != null)
+            {
+                var pillBtn = statusPillDot.GetComponentInParent<Button>();
+                if (pillBtn == null && statusPillDot.transform.parent != null)
+                {
+                    pillBtn = statusPillDot.transform.parent.gameObject.AddComponent<Button>();
+                }
+                if (pillBtn != null)
+                {
+                    pillBtn.onClick.AddListener(() => settingsUI?.Open());
+                }
+            }
 
             if (historyUI != null)
             {
@@ -101,16 +185,12 @@ namespace Inspection.Core
 
         public void CheckBackendConnection()
         {
+            if (statusPillText != null) statusPillText.text = "连接检测中";
+            if (statusPillDot != null) statusPillDot.color = Color.yellow;
+
             InspectionApiClient.Instance?.CheckHealth((success, health, err) =>
             {
-                if (statusPillText != null)
-                {
-                    statusPillText.text = success ? "后端正常" : "后端离线";
-                }
-                if (statusPillDot != null)
-                {
-                    statusPillDot.color = success ? new Color(0.1f, 0.9f, 0.5f) : new Color(1f, 0.35f, 0.45f);
-                }
+                UpdateStatusPill(success, success ? "后端正常" : "后端离线");
 
                 if (success)
                 {
@@ -130,6 +210,10 @@ namespace Inspection.Core
                         placementManager?.SpawnOrUpdateMarker(item);
                     }
                     ToastUI.Instance?.ShowSuccess($"已同步 {res.items.Length} 个巡检标记");
+                }
+                else if (!success)
+                {
+                    UpdateStatusPill(false, "后端离线");
                 }
             });
         }
