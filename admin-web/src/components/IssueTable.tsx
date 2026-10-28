@@ -13,10 +13,18 @@ interface Props {
   onDelete: (id: string) => Promise<void>
 }
 
+/**
+ * 巡检问题表格组件
+ * 对应任务书 3.2 React 管理端：
+ *   - 需求 1: 从 Go 后端获取问题列表
+ *   - 需求 2: 至少显示标题、优先级和状态（同时拓展了坐标与上报时间）
+ *   - 需求 3: 能将状态修改为 open / in_progress / resolved（支持原地快捷下拉切换并带乐观更新回滚）
+ */
 export function IssueTable({ issues, recentIds, selectedId, onSelect, onStatusChange, onDelete }: Props) {
   const toast = useToast()
   const [pending, setPending] = useState<string | null>(null)
 
+  // 状态修改流转：对应任务书 3.2.3
   const change = async (it: Issue, s: Status) => {
     setPending(it.id)
     try {

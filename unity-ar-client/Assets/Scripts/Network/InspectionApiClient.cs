@@ -29,7 +29,7 @@ namespace Inspection.Network
         }
 
         private const string PrefsKeyUrl = "Inspection_Backend_Url";
-        public const string DefaultBaseUrl = "http://192.168.1.100:8080";
+        public const string DefaultBaseUrl = "http://192.168.31.6:8080";
 
         [SerializeField]
         private string currentBaseUrl;
@@ -52,6 +52,12 @@ namespace Inspection.Network
                 instance = this;
                 DontDestroyOnLoad(gameObject);
                 currentBaseUrl = PlayerPrefs.GetString(PrefsKeyUrl, DefaultBaseUrl);
+                if (string.IsNullOrEmpty(currentBaseUrl) || currentBaseUrl.Contains("192.168.1.100"))
+                {
+                    currentBaseUrl = DefaultBaseUrl;
+                    PlayerPrefs.SetString(PrefsKeyUrl, currentBaseUrl);
+                    PlayerPrefs.Save();
+                }
             }
             else if (instance != this)
             {

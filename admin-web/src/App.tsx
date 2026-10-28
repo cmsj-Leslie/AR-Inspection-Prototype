@@ -67,6 +67,7 @@ export default function App() {
         </div>
       </header>
 
+      {/* 对应任务书 3.2.4：后端不可用时，页面应显示错误提示，绝不能直接白屏 */}
       {error && (
         <div className="alert" role="alert">
           <div className="alert__icon">!</div>

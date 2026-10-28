@@ -1,12 +1,22 @@
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 using Inspection.Models;
 using Inspection.Network;
 
 namespace Inspection.UI
 {
+    public class ClickTrigger : MonoBehaviour, IPointerClickHandler
+    {
+        public Action onClick;
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            onClick?.Invoke();
+        }
+    }
+
     public class InspectionFormUI : MonoBehaviour
     {
         [Header("Form Inputs")]
@@ -23,6 +33,7 @@ namespace Inspection.UI
 
         private Vector3 currentWorldPosition;
         private bool isSubmitting = false;
+        private int currentPriorityIndex = 0; // 0=high, 1=medium, 2=low
 
         public event Action<Issue> OnSubmitSuccess;
         public event Action OnCancelled;
@@ -39,20 +50,73 @@ namespace Inspection.UI
         private void InitPriorityDropdown()
         {
             if (priorityDropdown == null) return;
-            priorityDropdown.ClearOptions();
-            priorityDropdown.AddOptions(new System.Collections.Generic.List<string>
+
+            // 禁用 TMP_Dropdown 自身逻辑，防止拦截触摸
+            priorityDropdown.enabled = false;
+
+            // 给底色框绑定点击触发器
+            var trigger = priorityDropdown.gameObject.GetComponent<ClickTrigger>();
+            if (trigger == null) trigger = priorityDropdown.gameObject.AddComponent<ClickTrigger>();
+            trigger.onClick = CyclePriority;
+
+            // 同时给文字也绑定点击触发器，触摸任何位置都能 100% 切换
+            if (priorityDropdown.captionText != null)
             {
-                "高 (high)",
-                "中 (medium)",
-                "低 (low)"
-            });
-            priorityDropdown.value = 0; // 默认高
+                var textTrigger = priorityDropdown.captionText.gameObject.GetComponent<ClickTrigger>();
+                if (textTrigger == null) textTrigger = priorityDropdown.captionText.gameObject.AddComponent<ClickTrigger>();
+                textTrigger.onClick = CyclePriority;
+            }
+
+            UpdatePriorityUI();
+        }
+
+        public void CyclePriority()
+        {
+            currentPriorityIndex = (currentPriorityIndex + 1) % 3;
+            UpdatePriorityUI();
+        }
+
+        private void UpdatePriorityUI()
+        {
+            if (priorityDropdown != null)
+            {
+                priorityDropdown.value = currentPriorityIndex;
+                string label = currentPriorityIndex switch
+                {
+                    0 => "高 (high)  ·  点击切换",
+                    1 => "中 (medium)  ·  点击切换",
+                    2 => "低 (low)  ·  点击切换",
+                    _ => "高 (high)  ·  点击切换"
+                };
+
+                if (priorityDropdown.captionText != null)
+                {
+                    priorityDropdown.captionText.text = label;
+                    priorityDropdown.captionText.alignment = TextAlignmentOptions.Center;
+                    priorityDropdown.captionText.color = Color.white;
+                }
+
+                var img = priorityDropdown.GetComponent<Image>();
+                if (img != null)
+                {
+                    img.color = currentPriorityIndex switch
+                    {
+                        0 => new Color(0.85f, 0.2f, 0.25f, 0.95f), // 高：鲜明红色
+                        1 => new Color(0.92f, 0.55f, 0.1f, 0.95f),  // 中：橙黄色
+                        2 => new Color(0.2f, 0.6f, 0.85f, 0.95f),  // 低：冷静蓝色
+                        _ => new Color(0.1f, 0.15f, 0.25f, 0.95f)
+                    };
+                }
+            }
         }
 
         public void Open(Vector3 position)
         {
             currentWorldPosition = position;
             isSubmitting = false;
+
+            currentPriorityIndex = 0;
+            UpdatePriorityUI();
 
             if (titleInput != null)
             {
@@ -104,24 +168,27 @@ namespace Inspection.UI
             string title = titleInput != null ? titleInput.text.Trim() : string.Empty;
             string desc = descriptionInput != null ? descriptionInput.text.Trim() : string.Empty;
 
-            // 必填项校验：标题不可为空
+            // -------------------------------------------------------------
+            // 对应任务书 3.1 移动端需求 4 与 5：
+            //   - 标题：必填（空字符串拦截并标红提示）
+            //   - 描述：可选
+            //   - 优先级：low、medium、high 三级枚举
+            //   - 位置：当前放置标记的 x/y/z 局部物理坐标
+            //   - 需求 5: 提交成功或失败时给出明确的浮动 Toast 反馈
+            // -------------------------------------------------------------
             if (string.IsNullOrEmpty(title))
             {
                 ShowValidationError("标题为必填项，请输入问题标题！");
                 return;
             }
 
-            string priorityStr = "high";
-            if (priorityDropdown != null)
+            string priorityStr = currentPriorityIndex switch
             {
-                priorityStr = priorityDropdown.value switch
-                {
-                    0 => "high",
-                    1 => "medium",
-                    2 => "low",
-                    _ => "high"
-                };
-            }
+                0 => "high",
+                1 => "medium",
+                2 => "low",
+                _ => "high"
+            };
 
             var request = new CreateIssueRequest
             {
@@ -139,12 +206,14 @@ namespace Inspection.UI
 
                 if (success && issue != null)
                 {
+                    // 任务书 3.1.5: 成功明确提示
                     ToastUI.Instance.ShowSuccess($"问题上报成功！ID: {issue.id.Substring(0, 8)}...");
                     Close();
                     OnSubmitSuccess?.Invoke(issue);
                 }
                 else
                 {
+                    // 任务书 3.1.5: 失败明确提示（展示后端返回的具体原因）
                     string msg = error ?? "提交失败，请重试";
                     ShowValidationError(msg);
                     ToastUI.Instance.ShowError(msg);

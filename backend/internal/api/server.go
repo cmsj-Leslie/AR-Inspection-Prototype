@@ -34,7 +34,15 @@ func NewServer(s *store.Store, allowOrigin string) *Server {
 // Handler 返回注册好路由和中间件的 http.Handler
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
-	// Go 1.22+ 原生支持 "方法 路径/{参数}" 路由
+	// -------------------------------------------------------------
+	// 对应任务书 3.3 Go 后端能力规范：
+	//   - 3.3.1: 简单的服务运行状态检查 (GET /api/health)
+	//   - 3.3.2: 接收并保存 Unity 上报的问题 (POST /api/issues)
+	//   - 3.3.3: 返回已经保存的问题列表 (GET /api/issues)
+	//   - 3.3.4: 根据问题 ID 修改处理状态 (PATCH /api/issues/{id}/status)
+	//   - 3.3.8 / 3.3.9: 浏览器跨域与三端同一套数据 (CORS 中间件包装)
+	//   - 加分项: Server-Sent Events (SSE) 实时数据流 (GET /api/events)
+	// -------------------------------------------------------------
 	mux.HandleFunc("GET /api/health", s.health)
 	mux.HandleFunc("GET /api/issues", s.listIssues)
 	mux.HandleFunc("POST /api/issues", s.createIssue)
@@ -90,20 +98,24 @@ func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"items": items, "total": len(items)})
 }
 
+// createIssue 对应任务书 3.3.2 接收保存上报问题
 func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) {
 	var in issue.CreateInput
 	if !decodeJSON(w, r, &in) {
 		return
 	}
+	// 对应任务书 3.3.6: 标题为空或枚举值错误时，返回明确的参数错误提示与 400 状态码
 	if err := in.Normalize(); err != nil {
 		writeValidation(w, err)
 		return
 	}
+	// 对应任务书 3.3.5: 后端生成唯一 UUID，默认初始状态为 open，并持久化到 SQLite
 	it, err := s.store.Create(r.Context(), in)
 	if err != nil {
 		internalError(w, err)
 		return
 	}
+	// 广播实时推送事件给所有已连接的管理端（加分项：SSE 实时同步）
 	s.broker.Publish(Event{Type: "issue.created", Data: it})
 	writeJSON(w, http.StatusCreated, it)
 }

@@ -34,3 +34,5 @@ unity-ar-client/*.userprefs
 unity-ar-client/*.pidb
 unity-ar-client/*.booproj
 unity-ar-client/sysinfo.txt
+*.apk
+*.aab

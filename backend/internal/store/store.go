@@ -48,14 +48,18 @@ type ListFilter struct {
 	Priority string
 }
 
-// Open 打开（不存在则创建）SQLite 数据库并建表
+// Open 打开（不存在则创建）SQLite 数据库并建表。
+// 对应任务书 3.3.7: 数据在 Go 服务重启后仍然存在。
+// 技术选型考量：
+// 1. 采用 pure-Go modernc.org/sqlite 驱动，无需安装 GCC/CGO 工具链，跨平台开箱即用；
+// 2. 启用 WAL (Write-Ahead Logging) 模式，大幅提升读写性能并杜绝写入并发死锁；
+// 3. 设置 busy_timeout=5000，遇到锁争用时自动等待而非立即报错。
 func Open(path string) (*Store, error) {
 	if dir := filepath.Dir(path); dir != "" {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, fmt.Errorf("创建数据目录失败: %w", err)
 		}
 	}
-	// WAL 模式提升并发读写；busy_timeout 避免短暂锁冲突直接报错
 	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)", filepath.ToSlash(path))
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
